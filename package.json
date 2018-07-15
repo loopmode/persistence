@@ -1,0 +1,27 @@
+{
+  "name": "@loopmode/persistence",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "scripts": {
+    "clean": "rimraf lib/*",
+    "build": "rimraf lib/* && babel src --out-dir lib --copy-files",
+    "watch": "rimraf lib/* && babel src --out-dir lib --copy-files --watch",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "prepublishOnly": "yarn build"
+  },
+  "dependencies": {
+    "@loopmode/babel6-base": "*"
+  },
+  "babel": {
+    "extends": "@loopmode/babel6-base/.babelrc"
+  },
+  "eslint": {
+    "extends": "@loopmode/babel6-base/.eslintrc"
+  },
+  "prettier": {
+    "extends": "@loopmode/babel6-base/.prettierrc"
+  }
+}
