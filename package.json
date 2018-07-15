@@ -17,10 +17,10 @@
   "babel": {
     "extends": "@loopmode/babel6-base/.babelrc"
   },
-  "eslint": {
-    "extends": "@loopmode/babel6-base/.eslintrc"
+  "eslintConfig": {
+    "extends": "@loopmode/react"
   },
-  "prettier": {
+  "prettierConfig": {
     "extends": "@loopmode/babel6-base/.prettierrc"
   }
 }

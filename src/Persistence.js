@@ -4,13 +4,13 @@ const DEFAULT_PUBLIC_PATH = '/';
 
 if (!window.__persistenceInitialized) {
     window.__persistenceInitialized = true;
-    window.addEventListener("beforeunload", function persistAll() {
+    window.addEventListener('beforeunload', function persistAll() {
         instances.forEach(instance => {
             if (instance.enabled) {
                 try {
                     instance.save();
                 } catch (error) {
-                    console.warn("[Persistence] Failed saving", {
+                    console.warn('[Persistence] Failed saving', {
                         error,
                         instance
                     });
@@ -91,12 +91,8 @@ class Persistence {
      * Clears all storages
      */
     static clearAll(options = {}) {
-        const onlyIncluded = instance =>
-            !options.only ||
-            options.only.find(name => instance.name.match(name));
-        const notExcluded = instance =>
-            !options.not ||
-            !options.not.find(name => instance.name.match(name));
+        const onlyIncluded = instance => !options.only || options.only.find(name => instance.name.match(name));
+        const notExcluded = instance => !options.not || !options.not.find(name => instance.name.match(name));
         const cleared = instances
             .filter(onlyIncluded)
             .filter(notExcluded)
@@ -104,18 +100,12 @@ class Persistence {
                 storage.clear();
                 return storage;
             });
-        const skipped = instances.filter(
-            instance => cleared.indexOf(instance) === -1
-        );
+        const skipped = instances.filter(instance => cleared.indexOf(instance) === -1);
         Persistence.logging &&
             console.info(
-                "[Persistence]",
-                cleared.length
-                    ? `\n\tcleared: ${cleared.map(instance => instance.name)}`
-                    : "",
-                skipped.length
-                    ? `\n\tskipped: ${skipped.map(instance => instance.name)}`
-                    : ""
+                '[Persistence]',
+                cleared.length ? `\n\tcleared: ${cleared.map(instance => instance.name)}` : '',
+                skipped.length ? `\n\tskipped: ${skipped.map(instance => instance.name)}` : ''
             );
     }
     /**
@@ -156,19 +146,11 @@ class Persistence {
      * @param {object} options.publicPath - in case you use multiple apps on the same origin, use this to provide a scope and avoid collisions. Defaults to '/'.
      */
     constructor(name, options) {
-        this.name = `[${CONFIG.publicPath}]${name}`;
+        this.name = `[${options.publicPath || DEFAULT_PUBLIC_PATH}]${name}`;
         this.init(options);
         instances.push(this);
     }
-    init(
-        {
-            backend = window.localStorage,
-            autoEnable = true,
-            maxAge = 0,
-            data = {},
-            logging = this.logging
-        } = {}
-    ) {
+    init({ backend = window.localStorage, autoEnable = true, maxAge = 0, data = {}, logging = this.logging } = {}) {
         this.backend = backend;
         this.logging = logging;
         this.defaultData = this.defaultData || { ...data };
@@ -181,7 +163,7 @@ class Persistence {
                 try {
                     this.data = { ...this.data, ...JSON.parse(savedData) };
                 } catch (error) {
-                    console.warn("[Persistence] failed parsing saved data", {
+                    console.warn('[Persistence] failed parsing saved data', {
                         error,
                         savedData
                     });
@@ -192,18 +174,11 @@ class Persistence {
     }
 
     isExpired() {
-        if (
-            this.maxAge &&
-            this.data &&
-            (this.data.lastWrite || this.data.lastRead)
-        ) {
+        if (this.maxAge && this.data && (this.data.lastWrite || this.data.lastRead)) {
             const lastWrite = Number(this.data.lastWrite);
             const lastRead = Number(this.data.lastRead);
-            if (
-                Math.max(lastWrite, lastRead) <
-                Date.now() - this.maxAge * 1000
-            ) {
-                console.log("session expired");
+            if (Math.max(lastWrite, lastRead) < Date.now() - this.maxAge * 1000) {
+                console.log('session expired');
                 return true;
             }
         }
@@ -258,26 +233,26 @@ class Persistence {
     getItem(key) {
         // this.data.lastRead = Date.now();
         if (key === undefined) {
-            this.logging && console.log("get", { key, result: this.data });
+            this.logging && console.log('get', { key, result: this.data });
             return this.data;
         }
         const getValue = () => {
             const value = this.data[key];
             if (value !== undefined) {
-                if (value === "true" || value === true) {
+                if (value === 'true' || value === true) {
                     return true;
                 }
-                if (value === "false" || value === false) {
+                if (value === 'false' || value === false) {
                     return false;
                 }
-                if (value === "undefined") {
+                if (value === 'undefined') {
                     return undefined;
                 }
-                if (value === "null" || value === null) {
+                if (value === 'null' || value === null) {
                     return null;
                 }
-                if (value === "") {
-                    return "";
+                if (value === '') {
+                    return '';
                 }
                 if (Array.isArray(value)) {
                     // explicitely check for array!
@@ -294,7 +269,7 @@ class Persistence {
         };
         const result = getValue();
 
-        this.logging && console.log("get", { key, result });
+        this.logging && console.log('get', { key, result });
         return result;
     }
 
@@ -309,7 +284,7 @@ class Persistence {
     setItem(key, value, autoSave) {
         this.data[key] = value;
         // this.data.lastWrite = Date.now();
-        this.logging && console.log("set", key, value);
+        this.logging && console.log('set', key, value);
         if (autoSave === true) {
             this.save();
         }
@@ -324,7 +299,7 @@ class Persistence {
      */
     removeItem(key, autoSave) {
         delete this.data[key];
-        this.logging && console.log("remove", key);
+        this.logging && console.log('remove', key);
         // this.data.lastWrite = Date.now();
         if (autoSave === true) {
             this.save();
@@ -362,7 +337,7 @@ class Persistence {
      * Empties the data object and writes it to backend.
      */
     clear() {
-        this.logging && console.log("clear", { ...this.data });
+        this.logging && console.log('clear', { ...this.data });
         this.data = { ...this.defaultData };
         this.save();
     }
@@ -372,13 +347,7 @@ class Persistence {
      */
     save = () => {
         try {
-            this.logging &&
-                console.log(
-                    "save",
-                    this.name,
-                    { ...this.data },
-                    JSON.stringify(this.data)
-                );
+            this.logging && console.log('save', this.name, { ...this.data }, JSON.stringify(this.data));
             const data = JSON.stringify(this.data);
             this.backend.setItem(this.name, data);
         } catch (error) {
