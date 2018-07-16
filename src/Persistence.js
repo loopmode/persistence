@@ -56,7 +56,7 @@ class Persistence {
     /**
      * Returns an already existing instance for a given name or creates a new one
      */
-    static connect(name, options) {
+    static connect(name, options = {}) {
         const instance = Persistence.get(`[${options.publicPath || DEFAULT_PUBLIC_PATH}]${name}`);
         if (instance) {
             if (options) {
@@ -145,7 +145,7 @@ class Persistence {
      * @param {boolean} options.autoEnable - Whether to automatically enable the backend. Defaults to true.
      * @param {object} options.publicPath - in case you use multiple apps on the same origin, use this to provide a scope and avoid collisions. Defaults to '/'.
      */
-    constructor(name, options) {
+    constructor(name, options = {}) {
         this.name = `[${options.publicPath || DEFAULT_PUBLIC_PATH}]${name}`;
         this.init(options);
         instances.push(this);
