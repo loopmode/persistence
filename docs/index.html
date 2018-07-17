@@ -59,17 +59,25 @@ Additionally, you can store object values.</p>
 <pre><code class="lang-javascript"><code class="source-code prettyprint">// PageOne.js
 import Persistence from &apos;@loopmode/persistence&apos;;
 const storage = new Persistence(&apos;PageOne&apos;);
+
 storage.set(&apos;viewMode&apos;, &apos;list&apos;);
 
 // PageTwo.js
 import Persistence from &apos;@loopmode/persistence&apos;;
 const storage = new Persistence(&apos;PageTwo&apos;);
+
 storage.set(&apos;viewMode&apos;, &apos;grid&apos;);
-storage.set(&apos;foo&apos;, {bar: {baz: &apos;boo&apos;}});</code>
+storage.set(&apos;foo&apos;, {bar: {baz: &apos;boo&apos;}});
+console.log(storage.get(&apos;foo&apos;)); // {bar: {baz: &apos;boo&apos;}}
+
+// you can also pass objects to set all values at once
+storage.set({foo: &apos;foo&apos;, bar: {baz: &apos;boo&apos;}});
+console.log(storage.get(&apos;foo&apos;)); // &apos;foo&apos;
+console.log(storage.get(&apos;bar&apos;)); // {baz: &apos;boo&apos;}</code>
 </code></pre>
 <h2 id="serialization-and-performance">Serialization and performance</h2>
 <p>When using the get/set methods, you are not operating on the actual web storage yet, because that would involve serialization/deserialization (e.g. <code>JSON.encode</code>, <code>JSON.stringify</code>).<br>Instead, you work on a simple in-memory object and no serialization is taking place until before the page is unloaded or you call <code>instance.save()</code> manually.</p>
-<p><em>NOTE: Mutating methods (<code>set</code>/<code>setItem</code>, <code>remove</code>/<code>removeItem</code>, <code>setAll</code>, <code>clear</code>) support an optional <code>autoSave</code> flag. Passing <code>{autoSave: true}</code> will cause the change to be immediatly persisted to the web storage backend.</em></p>
+<p><em>NOTE: Mutating methods (<code>set</code>/<code>setItem</code>, <code>remove</code>/<code>removeItem</code>, <code>setAll</code>, <code>clear</code>) support an optional <code>autoSave</code> flag. Passing <code>true</code> will cause the change to be immediatly persisted to the web storage backend, e.g. <code>storage.set({foo: &apos;foo!!&apos;}, true)</code>.</em></p>
 <pre><code class="lang-javascript"><code class="source-code prettyprint">// PageTwo.js
 storage.set(&apos;foo&apos;, {bar: {baz: &apos;boo&apos;}});
 // value is immediatly available for reading, even if it&apos;s not persisted to the web storage yet
