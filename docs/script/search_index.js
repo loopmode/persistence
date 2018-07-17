@@ -420,15 +420,15 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "src/persistence.js~persistence#setall",
-    "class/src/Persistence.js~Persistence.html#instance-method-setAll",
-    "src/Persistence.js~Persistence#setAll",
-    "method"
-  ],
-  [
     "src/persistence.js~persistence#setitem",
     "class/src/Persistence.js~Persistence.html#instance-method-setItem",
     "src/Persistence.js~Persistence#setItem",
+    "method"
+  ],
+  [
+    "src/persistence.js~persistence#setitemvalues",
+    "class/src/Persistence.js~Persistence.html#instance-method-setItemValues",
+    "src/Persistence.js~Persistence#setItemValues",
     "method"
   ],
   [

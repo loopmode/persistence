@@ -80,9 +80,9 @@ The string is then persisted to the backend storage, e.g. <code>window.localStor
     
   <div class="example-doc" data-ice="exampleDoc">
       
-      <pre class="prettyprint source-code"><code data-ice="exampleCode">const myCache = new Persistence(&apos;myCache&apos;);
-myCache.setItem(&apos;started&apos;, new Date());
-console.log(myCache.getItem(&apos;started&apos;));</code></pre>
+      <pre class="prettyprint source-code"><code data-ice="exampleCode">const storage = new Persistence(&apos;storage&apos;);
+storage.setItem(&apos;started&apos;, new Date());
+console.log(storage.getItem(&apos;started&apos;));</code></pre>
     </div>
 </div>
 
@@ -177,7 +177,7 @@ console.log(myCache.getItem(&apos;started&apos;));</code></pre>
       <div>
         
         
-        <div data-ice="description"><p>Clears all storage instances.</p>
+        <div data-ice="description"><p>Clears the data of all instances.</p>
 </div>
       </div>
     </td>
@@ -233,7 +233,7 @@ console.log(myCache.getItem(&apos;started&apos;));</code></pre>
       <div>
         
         
-        <div data-ice="description"><p>Filters all storages by partial name match.</p>
+        <div data-ice="description"><p>Filters all instances by partial name match.</p>
 </div>
       </div>
     </td>
@@ -261,7 +261,7 @@ console.log(myCache.getItem(&apos;started&apos;));</code></pre>
       <div>
         
         
-        <div data-ice="description"><p>Finds a single storage by partial name match.</p>
+        <div data-ice="description"><p>Finds a single instance by partial name match.</p>
 </div>
       </div>
     </td>
@@ -289,7 +289,7 @@ console.log(myCache.getItem(&apos;started&apos;));</code></pre>
       <div>
         
         
-        <div data-ice="description"><p>Gets a storage by its full name.</p>
+        <div data-ice="description"><p>Gets an instance by its full name.</p>
 </div>
       </div>
     </td>
@@ -345,7 +345,7 @@ console.log(myCache.getItem(&apos;started&apos;));</code></pre>
       <div>
         
         
-        <div data-ice="description"><p>Retrieves the size of the occupied storage space for all instances.</p>
+        <div data-ice="description"><p>Retrieves the size of the occupied space for all instances.</p>
 </div>
       </div>
     </td>
@@ -752,13 +752,13 @@ console.log(myCache.getItem(&apos;started&apos;));</code></pre>
         <p>
           
           
-          <span data-ice="name"><span><a href="class/src/Persistence.js~Persistence.html#instance-method-setAll">setAll</a></span></span><span data-ice="signature">(values: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></span>, autoSave: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></span>)</span>
+          <span data-ice="name"><span><a href="class/src/Persistence.js~Persistence.html#instance-method-setItem">setItem</a></span></span><span data-ice="signature">(key: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">String</a></span> | <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></span>, value: <span>any</span>, autoSave: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></span>): <span>*</span></span>
         </p>
       </div>
       <div>
         
         
-        <div data-ice="description"><p>Sets all values of a given object at once.</p>
+        <div data-ice="description"><p>Sets a key/value to the data object.</p>
 </div>
       </div>
     </td>
@@ -780,13 +780,13 @@ console.log(myCache.getItem(&apos;started&apos;));</code></pre>
         <p>
           
           
-          <span data-ice="name"><span><a href="class/src/Persistence.js~Persistence.html#instance-method-setItem">setItem</a></span></span><span data-ice="signature">(key: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">String</a></span> | <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></span>, value: <span>any</span>, autoSave: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></span>): <span>*</span></span>
+          <span data-ice="name"><span><a href="class/src/Persistence.js~Persistence.html#instance-method-setItemValues">setItemValues</a></span></span><span data-ice="signature">(values: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></span>, autoSave: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></span>)</span>
         </p>
       </div>
       <div>
         
         
-        <div data-ice="description"><p>Sets a key/value to the data object.</p>
+        <div data-ice="description"><p>Sets all values of a given object at once.</p>
 </div>
       </div>
     </td>
@@ -914,7 +914,7 @@ console.log(myCache.getItem(&apos;started&apos;));</code></pre>
   
   
   
-  <div data-ice="description"><p>Clears all storage instances.</p>
+  <div data-ice="description"><p>Clears the data of all instances.</p>
 </div>
 
   
@@ -1072,7 +1072,7 @@ Note that all constructor options are supported here as well.</p>
   
   
   
-  <div data-ice="description"><p>Filters all storages by partial name match.</p>
+  <div data-ice="description"><p>Filters all instances by partial name match.</p>
 </div>
 
   
@@ -1146,7 +1146,7 @@ Note that all constructor options are supported here as well.</p>
   
   
   
-  <div data-ice="description"><p>Finds a single storage by partial name match.</p>
+  <div data-ice="description"><p>Finds a single instance by partial name match.</p>
 </div>
 
   
@@ -1199,7 +1199,7 @@ Note that all constructor options are supported here as well.</p>
     
   <div class="example-doc" data-ice="exampleDoc">
       
-      <pre class="prettyprint source-code"><code data-ice="exampleCode">const storage = new Persistence(&apos;config&apos;, {publicPath: &apos;/app-one/dev&apos;});
+      <pre class="prettyprint source-code"><code data-ice="exampleCode">const instance = new Persistence(&apos;config&apos;, {publicPath: &apos;/app-one/dev&apos;});
 console.log(Persistence.find(&apos;conf&apos;)) // {logging: false, save: &#x192;, name: &quot;[/app-one/dev]config&quot;, backend: Storage, defaultData: {&#x2026;},&#xA0;&#x2026;}</code></pre>
     </div>
 </div>
@@ -1228,7 +1228,7 @@ console.log(Persistence.find(&apos;conf&apos;)) // {logging: false, save: &#x192
   
   
   
-  <div data-ice="description"><p>Gets a storage by its full name.
+  <div data-ice="description"><p>Gets an instance by its full name.
 The full name includes the <code>publicPath</code> in order to avoid collisions in cases where multiple apps operate within the same origin.</p>
 <p>For example, if you created an instance via <code>new Persistence(&apos;foo&apos;)</code>, you could access it via <code>Persistence.get(&apos;[/]foo&apos;)</code>.<br>On the other hand, you might also have a debuggable version deployed on the same origin at <code>/dev</code>. (You&apos;d probably use some kind of config value for <code>publicPath</code> in such cases).<br>So, if you had created the instance via <code>new Persistence(&apos;foo&apos;, {publicPath: &apos;/dev&apos;})</code>, you would access it via <code>Persistence.get(&apos;[/dev]foo&apos;)</code>.</p>
 <p><em>NOTE: If you do not want to deal with full names and <code>publicPath</code> values, use <code>Persistence.find(name)</code> instead.</em><br><em>NOTE: If you need to get all instances of the origin, use <code>Persistence.filter(name)</code> instead.</em></p>
@@ -1364,7 +1364,7 @@ The instance names are used as keys. If you need an array of instances and don&a
   
   
   
-  <div data-ice="description"><p>Retrieves the size of the occupied storage space for all instances.
+  <div data-ice="description"><p>Retrieves the size of the occupied space for all instances.
 The value is a number of characters and roughly approximates bytes.
 TODO: proper byte-size conversion</p>
 </div>
@@ -2283,75 +2283,6 @@ Does not write to this.backend automatically!</p>
   
 </div>
 <div class="detail" data-ice="detail">
-  <h3 data-ice="anchor" id="instance-method-setAll">
-    <span class="access" data-ice="access">public</span>
-    
-    
-    
-    
-    
-    <span data-ice="name">setAll</span><span data-ice="signature">(values: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></span>, autoSave: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></span>)</span>
-    <span class="right-info">
-      
-      
-      <span data-ice="source"><span><a href="file/src/Persistence.js.html#lineNumber373">source</a></span></span>
-    </span>
-  </h3>
-
-  
-  
-  
-  <div data-ice="description"><p>Sets all values of a given object at once.
-Calls <code>set(key, value)</code> for each key of the object.</p>
-</div>
-
-  
-
-  <div data-ice="properties"><div data-ice="properties">
-  <h4 data-ice="title">Params:</h4>
-  <table class="params">
-    <thead>
-    <tr><td>Name</td><td>Type</td><td>Attribute</td><td>Description</td></tr>
-    </thead>
-    <tbody>
-    
-    <tr data-ice="property" data-depth="0">
-      <td data-ice="name" data-depth="0">values</td>
-      <td data-ice="type"><span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></span></td>
-      <td data-ice="appendix"></td>
-      <td data-ice="description"><p>An object with keys and values</p>
-</td>
-    </tr>
-<tr data-ice="property" data-depth="0">
-      <td data-ice="name" data-depth="0">autoSave</td>
-      <td data-ice="type"><span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></span></td>
-      <td data-ice="appendix"></td>
-      <td data-ice="description"><p>Whether to write to the storage backend right away.</p>
-</td>
-    </tr>
-</tbody>
-  </table>
-</div>
-</div>
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-  
-</div>
-<div class="detail" data-ice="detail">
   <h3 data-ice="anchor" id="instance-method-setItem">
     <span class="access" data-ice="access">public</span>
     
@@ -2371,7 +2302,7 @@ Calls <code>set(key, value)</code> for each key of the object.</p>
   
   
   <div data-ice="description"><p>Sets a key/value to the data object.
-If the first argument is not a string but an object, the signature changes to <code>(values, autoSave)</code> and <code>setAll</code> will be used internally.</p>
+If the first argument is not a string but an object, the signature changes to <code>(values, autoSave)</code> and <code>setItemValues</code> will be used internally.</p>
 </div>
 
   
@@ -2423,6 +2354,75 @@ If the first argument is not a string but an object, the signature changes to <c
     <div data-ice="returnProperties">
 </div>
   </div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="instance-method-setItemValues">
+    <span class="access" data-ice="access">public</span>
+    
+    
+    
+    
+    
+    <span data-ice="name">setItemValues</span><span data-ice="signature">(values: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></span>, autoSave: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></span>)</span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/src/Persistence.js.html#lineNumber373">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  <div data-ice="description"><p>Sets all values of a given object at once.
+Calls <code>set(key, value)</code> for each key of the object.</p>
+</div>
+
+  
+
+  <div data-ice="properties"><div data-ice="properties">
+  <h4 data-ice="title">Params:</h4>
+  <table class="params">
+    <thead>
+    <tr><td>Name</td><td>Type</td><td>Attribute</td><td>Description</td></tr>
+    </thead>
+    <tbody>
+    
+    <tr data-ice="property" data-depth="0">
+      <td data-ice="name" data-depth="0">values</td>
+      <td data-ice="type"><span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"><p>An object with keys and values</p>
+</td>
+    </tr>
+<tr data-ice="property" data-depth="0">
+      <td data-ice="name" data-depth="0">autoSave</td>
+      <td data-ice="type"><span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"><p>Whether to write to the storage backend right away.</p>
+</td>
+    </tr>
+</tbody>
+  </table>
+</div>
+</div>
+
+  
 
   
 

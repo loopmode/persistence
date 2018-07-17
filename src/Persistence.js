@@ -31,9 +31,9 @@ if (!window.__persistenceInitialized) {
  * The string is then persisted to the backend storage, e.g. `window.localStorage` (default).
  *
  * @example
- * const myCache = new Persistence('myCache');
- * myCache.setItem('started', new Date());
- * console.log(myCache.getItem('started'));
+ * const storage = new Persistence('storage');
+ * storage.setItem('started', new Date());
+ * console.log(storage.getItem('started'));
  *
  * @author jovica.aleksic@xailabs.de
  */
@@ -79,7 +79,7 @@ class Persistence {
 
     /* eslint-disable */
     /**
-     * Gets a storage by its full name.
+     * Gets an instance by its full name.
      * The full name includes the `publicPath` in order to avoid collisions in cases where multiple apps operate within the same origin.
      *
      * For example, if you created an instance via `new Persistence('foo')`, you could access it via `Persistence.get('[/]foo')`.  
@@ -97,31 +97,31 @@ class Persistence {
      */
     /* eslint-enable */
     static get(name) {
-        return instances.find(storage => storage.name === name);
+        return instances.find(instance => instance.name === name);
     }
 
     /**
-     * Finds a single storage by partial name match.
+     * Finds a single instance by partial name match.
      *
      * @example
-     * const storage = new Persistence('config', {publicPath: '/app-one/dev'});
+     * const instance = new Persistence('config', {publicPath: '/app-one/dev'});
      * console.log(Persistence.find('conf')) // {logging: false, save: ƒ, name: "[/app-one/dev]config", backend: Storage, defaultData: {…}, …}
      *
      * @param {string|RegExp} name - A string or regular expression that will be matched against instance names
      * @return {Object} - The found `Persistence` object or `undefined`
      */
     static find(name) {
-        return instances.find(storage => storage.name.match(name));
+        return instances.find(instance => instance.name.match(name));
     }
 
     /**
-     * Filters all storages by partial name match.
+     * Filters all instances by partial name match.
      *
      * @param {string|RegExp} name - A string or regular expression that will be matched against instance names
      * @return {Array} - An array of matching `Persistence` objects. Might be empty.
      */
     static filter(name) {
-        return instances.filter(storage => storage.name.match(name));
+        return instances.filter(instance => instance.name.match(name));
     }
 
     /**
@@ -137,7 +137,7 @@ class Persistence {
     }
 
     /**
-     * Clears all storage instances.
+     * Clears the data of all instances.
      * @param {Object} [options] - Options object
      * @param {Array} [options.only] - An array of names. If provided, **only** instances whose names match partially will be cleared.
      * @param {Array} [options.not] - An array of names. If provided, instances whose names match partially will **NOT** be cleared.
@@ -148,9 +148,9 @@ class Persistence {
         const cleared = instances
             .filter(onlyIncluded)
             .filter(notExcluded)
-            .map(storage => {
-                storage.clear();
-                return storage;
+            .map(instance => {
+                instance.clear();
+                return instance;
             });
         const skipped = instances.filter(instance => cleared.indexOf(instance) === -1);
         Persistence.logging &&
@@ -162,13 +162,13 @@ class Persistence {
     }
 
     /**
-     * Retrieves the size of the occupied storage space for all instances.
+     * Retrieves the size of the occupied space for all instances.
      * The value is a number of characters and roughly approximates bytes.
      * TODO: proper byte-size conversion
      */
     static getSize() {
-        return instances.reduce((result, storage) => {
-            return result + storage.getSize();
+        return instances.reduce((result, instance) => {
+            return result + instance.getSize();
         }, 0);
     }
 
@@ -331,7 +331,7 @@ class Persistence {
 
     /**
      * Sets a key/value to the data object.
-     * If the first argument is not a string but an object, the signature changes to `(values, autoSave)` and `setAll` will be used internally.
+     * If the first argument is not a string but an object, the signature changes to `(values, autoSave)` and `setItemValues` will be used internally.
      *
      * @param {String|Object} key - The key for the value
      * @param {any} [value] - When `key` is a string: the value, otherwise: the `autoSave` flag
@@ -339,7 +339,7 @@ class Persistence {
      */
     setItem(key, value, autoSave) {
         if (typeof key !== 'string') {
-            return this.setAll(key, value);
+            return this.setItemValues(key, value);
         }
         this.data[key] = value;
         this.logging && console.log('set', key, value);
@@ -370,7 +370,7 @@ class Persistence {
      * @param {Object} values - An object with keys and values
      * @param {Boolean} autoSave - Whether to write to the storage backend right away.
      */
-    setAll(values, autoSave) {
+    setItemValues(values, autoSave) {
         Object.keys(values).forEach(key => {
             this.set(key, values[key]);
         });
