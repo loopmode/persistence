@@ -39,7 +39,11 @@
 
 <div class="content" data-ice="content"><div data-ice="index" class="github-markdown"><h1 id="-loopmode-persistence">@loopmode/persistence</h1>
 <p>A scoped wrapper for web storage APIs.</p>
-<p>Allows simplified and more performant usage of <code>window.localStorage</code> and <code>window.sessionStorage</code>.<br>Instead of using long keys to avoid collisions, create scoped persistence objects instead.</p>
+<p>Allows simplified and more performant usage of <code>window.localStorage</code> and <code>window.sessionStorage</code>.  </p>
+<ul>
+<li>Instead of using long keys to avoid collisions, create scoped persistence objects instead.</li>
+<li>Instead of serializing/deserializing object values on each access, do it only once and operate on a plain object instead</li>
+</ul>
 <p>Full documentation available at <a href="https://loopmode.github.io/persistence/">https://loopmode.github.io/persistence/</a><br>Repository available at <a href="https://github.com/loopmode/persistence">https://github.com/loopmode/persistence</a>  </p>
 <h2 id="installation">Installation</h2>
 <pre><code class="lang-javascript"><code class="source-code prettyprint">yarn add @loopmode/persistence</code>
