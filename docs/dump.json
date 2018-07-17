@@ -1,0 +1,1951 @@
+[
+  {
+    "__docId__": 0,
+    "kind": "file",
+    "name": "src/index.js",
+    "content": "export default from './Persistence';\r\n",
+    "static": true,
+    "longname": "src/index.js",
+    "access": null,
+    "description": null,
+    "lineNumber": 1
+  },
+  {
+    "__docId__": 1,
+    "kind": "file",
+    "name": "src/Persistence.js",
+    "content": "const instances = [];\r\n\r\nconst DEFAULT_PUBLIC_PATH = '/';\r\n\r\nif (!window.__persistenceInitialized) {\r\n    window.__persistenceInitialized = true;\r\n    window.addEventListener('beforeunload', function persistAll() {\r\n        instances.forEach(instance => {\r\n            if (instance.enabled) {\r\n                try {\r\n                    instance.save();\r\n                } catch (error) {\r\n                    console.warn('[Persistence] Failed saving', {\r\n                        error,\r\n                        instance\r\n                    });\r\n                }\r\n            }\r\n        });\r\n    });\r\n}\r\n\r\n/**\r\n * A wrapper for persisting data to `localStorage` or `sessionStorage`.\r\n * You can create multiple instances but you must provide unique names;\r\n *\r\n * The API resembles the one from the web storage objects: `setItem(key, vaue)`, `getItem(key)`, `removeItem(key)`, but there are also shorter aliases: `set()`, `get()` and `remove()`.\r\n *\r\n * In order to avoid expensive JSON serialization/deserialization by interacting with the storage backend, the data is held in memory (in a simple object).\r\n * All operations operate on that plain object. An event listener is registered for the `window.beforeunload` event, and only then we will serialize the data to an actual JSON string.\r\n * The string is then persisted to the backend storage, e.g. `window.localStorage` (default).\r\n *\r\n * @example\r\n * const myCache = new Persistence('myCache');\r\n * myCache.setItem('started', new Date());\r\n * console.log(myCache.getItem('started'));\r\n *\r\n * @author jovica.aleksic@xailabs.de\r\n */\r\nclass Persistence {\r\n    //\r\n    // Static API\r\n    //\r\n    //--------------------------------------------------------------------\r\n\r\n    /**\r\n     * Whether to log details to the console when certain static methods are called.\r\n     * @type {Boolean}\r\n     */\r\n    static logging = false;\r\n\r\n    /**\r\n     * An array containing all instances.\r\n     * _NOTE: This is a read-only value. You can not mutate the actual instances array._\r\n     * @type {Array}\r\n     */\r\n    static get instances() {\r\n        return [...instances];\r\n    }\r\n\r\n    /**\r\n     * Returns an already existing instance for a given name or creates a new instance and returns it.\r\n     * Note that all constructor options are supported here as well.\r\n     *\r\n     * @param {Object} [options] - Options object\r\n     * @param {String} [options.publicPath = '/'] - The path where this app is deployed within the current origin\r\n     * @return {Object} - The found or created `Persistence` object\r\n     */\r\n    static connect(name, options = {}) {\r\n        const instance = Persistence.get(`[${options.publicPath || DEFAULT_PUBLIC_PATH}]${name}`);\r\n        if (instance) {\r\n            if (options) {\r\n                instance.init(options);\r\n            }\r\n            return instance;\r\n        }\r\n        return new Persistence(name, options);\r\n    }\r\n\r\n    /* eslint-disable */\r\n    /**\r\n     * Gets a storage by its full name.\r\n     * The full name includes the `publicPath` in order to avoid collisions in cases where multiple apps operate within the same origin.\r\n     *\r\n     * For example, if you created an instance via `new Persistence('foo')`, you could access it via `Persistence.get('[/]foo')`.  \r\n     * On the other hand, you might also have a debuggable version deployed on the same origin at `/dev`. (You'd probably use some kind of config value for `publicPath` in such cases).  \r\n     * So, if you had created the instance via `new Persistence('foo', {publicPath: '/dev'})`, you would access it via `Persistence.get('[/dev]foo')`.\r\n     *\r\n     * _NOTE: If you do not want to deal with full names and `publicPath` values, use `Persistence.find(name)` instead._  \r\n     * _NOTE: If you need to get all instances of the origin, use `Persistence.filter(name)` instead._\r\n     *\r\n     * @see {@link Persistence.find}\r\n     * @see {@link Persistence.filter}\r\n     *\r\n     * @param {String} name - the full instance name\r\n     * @return {Object} - The found `Persistence` object or `undefined`\r\n     */\r\n    /* eslint-enable */\r\n    static get(name) {\r\n        return instances.find(storage => storage.name === name);\r\n    }\r\n\r\n    /**\r\n     * Finds a single storage by partial name match.\r\n     *\r\n     * @example\r\n     * const storage = new Persistence('config', {publicPath: '/app-one/dev'});\r\n     * console.log(Persistence.find('conf')) // {logging: false, save: ƒ, name: \"[/app-one/dev]config\", backend: Storage, defaultData: {…}, …}\r\n     *\r\n     * @param {string|RegExp} name - A string or regular expression that will be matched against instance names\r\n     * @return {Object} - The found `Persistence` object or `undefined`\r\n     */\r\n    static find(name) {\r\n        return instances.find(storage => storage.name.match(name));\r\n    }\r\n\r\n    /**\r\n     * Filters all storages by partial name match.\r\n     *\r\n     * @param {string|RegExp} name - A string or regular expression that will be matched against instance names\r\n     * @return {Array} - An array of matching `Persistence` objects. Might be empty.\r\n     */\r\n    static filter(name) {\r\n        return instances.filter(storage => storage.name.match(name));\r\n    }\r\n\r\n    /**\r\n     * Returns an object containing all instances as values.\r\n     * The instance names are used as keys. If you need an array of instances and don't care about their names, use `Object.values(Persistence.getAll())`.\r\n     * @return {Object} - A key/value object where each key is an instance name and each value is an instance.\r\n     */\r\n    static getAll() {\r\n        return instances.reduce((result, instance) => {\r\n            result[instance.name] = instance;\r\n            return result;\r\n        }, {});\r\n    }\r\n\r\n    /**\r\n     * Clears all storage instances.\r\n     * @param {Object} [options] - Options object\r\n     * @param {Array} [options.only] - An array of names. If provided, **only** instances whose names match partially will be cleared.\r\n     * @param {Array} [options.not] - An array of names. If provided, instances whose names match partially will **NOT** be cleared.\r\n     */\r\n    static clearAll(options = {}) {\r\n        const onlyIncluded = instance => !options.only || options.only.find(name => instance.name.match(name));\r\n        const notExcluded = instance => !options.not || !options.not.find(name => instance.name.match(name));\r\n        const cleared = instances\r\n            .filter(onlyIncluded)\r\n            .filter(notExcluded)\r\n            .map(storage => {\r\n                storage.clear();\r\n                return storage;\r\n            });\r\n        const skipped = instances.filter(instance => cleared.indexOf(instance) === -1);\r\n        Persistence.logging &&\r\n            console.info(\r\n                '[Persistence]',\r\n                cleared.length ? `\\n\\tcleared: ${cleared.map(instance => instance.name)}` : '',\r\n                skipped.length ? `\\n\\tskipped: ${skipped.map(instance => instance.name)}` : ''\r\n            );\r\n    }\r\n\r\n    /**\r\n     * Retrieves the size of the occupied storage space for all instances.\r\n     * The value is a number of characters and roughly approximates bytes.\r\n     * TODO: proper byte-size conversion\r\n     */\r\n    static getSize() {\r\n        return instances.reduce((result, storage) => {\r\n            return result + storage.getSize();\r\n        }, 0);\r\n    }\r\n\r\n    //\r\n    // Instance API\r\n    //\r\n    //--------------------------------------------------------------------\r\n\r\n    /**\r\n     * Whether to log details to the console when certain instance methods are called.\r\n     * @type {Boolean}\r\n     */\r\n    logging = false;\r\n\r\n    /* eslint-disable */\r\n    /**\r\n     * Creates a new Persistence object.  \r\n     * A Persistence stores its data in a simple object (in memory) and persists the data as a JSON string to web storage backend (e.g. `window.localStorage`) before the window unloads, using the instance `name` as the actual key in the web storage backend.\r\n     * When a new instance is created, it looks for previously stored data in the web storage backend, and parses it back to a data object for runtime usage.\r\n     *\r\n     * This means that you can set and get values without an performance penalty, JSON conversion only happens at startup and before unload.\r\n     *\r\n     * You can specify a name to enable multiple apps on the same origin without collisions in data using the `publicPath` option.\r\n     * (Consider that localStorage is shared per origin (protocol, host, port), so if you want to have two _instances in /a and /b, you can use those paths as names for the Persistence)\r\n     *\r\n     * @param {String} name - A unique name for this backend object.\r\n     * @param {Object} options -\r\n     * @param {Object} options.data - An initial data object for this instance\r\n     * @param {Object} options.backend - The backend object to use as backend. Should expose `getItem`, `getItem` and `removeItem` function. Defaults to `window.localStorage`.\r\n     * @param {Boolean} options.logging - Whether to enable to logging for this instance\r\n     * @param {Boolean} options.autoEnable - Whether this instance should be enabled. Defaults to true.\r\n     * @param {String} [options.publicPath = '/'] - The path where this app is deployed within the current origin\r\n     */\r\n    /* eslint-enable */\r\n    constructor(name, options = {}) {\r\n        this.name = `[${options.publicPath || DEFAULT_PUBLIC_PATH}]${name}`;\r\n        this.save = this.save.bind(this);\r\n        this.init(options);\r\n        instances.push(this);\r\n    }\r\n\r\n    /**\r\n     * @private\r\n     */\r\n    init({ backend = window.localStorage, autoEnable = true, data = {}, logging = this.logging } = {}) {\r\n        this.backend = backend;\r\n        this.logging = logging;\r\n        this.defaultData = this.defaultData || { ...data };\r\n        this.data = { ...this.defaultData, ...this.data, ...data };\r\n\r\n        if (!this.backend.getItem(`${this.name}:disabled`) && autoEnable) {\r\n            const savedData = this.backend.getItem(this.name);\r\n            if (savedData) {\r\n                try {\r\n                    this.data = { ...this.data, ...JSON.parse(savedData) };\r\n                } catch (error) {\r\n                    console.warn('[Persistence] failed parsing saved data', {\r\n                        error,\r\n                        savedData\r\n                    });\r\n                }\r\n            }\r\n            this.enable();\r\n        }\r\n    }\r\n\r\n    /**\r\n     * Checks if a property exists.\r\n     * Note: `true` will be returned as long as the key is found on the data object, even if the value itself is empty.\r\n     *\r\n     * @param {String} key - The property name to check for existence.\r\n     * @return {Boolean} - `true` if `key` was found\r\n     */\r\n    has(key) {\r\n        this.data.hasOwnProperty(key);\r\n    }\r\n\r\n    /**\r\n     * Alias for `setItem(key, value)`\r\n     * @see {@link Persistence#setItem}\r\n     * @param {String|Object} key - The key for the value\r\n     * @param {any} [value] - When `key` is a string: the value, otherwise: the `autoSave` flag\r\n     * @param {Boolean} [autoSave] - When `key` is a string: Whether to immediatly write to the backend.\r\n     */\r\n    set(key, value, autoSave) {\r\n        return this.setItem(key, value, autoSave);\r\n    }\r\n\r\n    /**\r\n     * Alias for `getItem(key)`\r\n     * @see {@link Persistence#getItem}\r\n     * @param {String} key - The key to retrieve a value for\r\n     * @return {any} - The value for `key`\r\n     */\r\n    get(key) {\r\n        return this.getItem(key);\r\n    }\r\n\r\n    /**\r\n     * Alias for `removeItem(key)`\r\n     * @see {@link Persistence#removeItem}\r\n     * @param {String} key - The key to delete\r\n     * @param {Boolean} autoSave - Whether to write to backend. Defaults to false\r\n     */\r\n    remove(key, autoSave) {\r\n        return this.removeItem(key, autoSave);\r\n    }\r\n\r\n    /**\r\n     * Retrieves a value from the backend data.\r\n     * - Booleans, numbers, undefined and null will be parsed/casted to proper JS objects/values\r\n     * - All other values will be returned as strings\r\n     *\r\n     * Note: This does not read from the backend directly, but from the data object instead (which was initially parsed from the backend values)\r\n     *\r\n     * @param {String} key - The key to retrieve a value for\r\n     * @return {any} - The value for `key`\r\n     */\r\n    getItem(key) {\r\n        if (key === undefined) {\r\n            this.logging && console.log('get', { key, result: this.data });\r\n            return this.data;\r\n        }\r\n        const getValue = () => {\r\n            const value = this.data[key];\r\n            if (value !== undefined) {\r\n                if (value === 'true' || value === true) {\r\n                    return true;\r\n                }\r\n                if (value === 'false' || value === false) {\r\n                    return false;\r\n                }\r\n                if (value === 'undefined') {\r\n                    return undefined;\r\n                }\r\n                if (value === 'null' || value === null) {\r\n                    return null;\r\n                }\r\n                if (value === '') {\r\n                    return '';\r\n                }\r\n                if (Array.isArray(value)) {\r\n                    // explicitely check for array!\r\n                    // otherwise, an array containing a single numeric value will pass as a number in the next isNaN check\r\n                    // because javascript is an idiot sometimes..: `isNaN(['1']) === false` due to casting/auto-boxing `['1'] -> '1' -> 1 > numeric`\r\n                    return value;\r\n                }\r\n                if (!isNaN(value)) {\r\n                    return Number(value);\r\n                }\r\n                return value || null;\r\n            }\r\n            return value;\r\n        };\r\n        const result = getValue();\r\n\r\n        this.logging && console.log('get', { key, result });\r\n        return result;\r\n    }\r\n\r\n    /**\r\n     * Sets a key/value to the data object.\r\n     * If the first argument is not a string but an object, the signature changes to `(values, autoSave)` and `setAll` will be used internally.\r\n     *\r\n     * @param {String|Object} key - The key for the value\r\n     * @param {any} [value] - When `key` is a string: the value, otherwise: the `autoSave` flag\r\n     * @param {Boolean} [autoSave] - When `key` is a string: Whether to immediatly write to the backend.\r\n     */\r\n    setItem(key, value, autoSave) {\r\n        if (typeof key !== 'string') {\r\n            return this.setAll(key, value);\r\n        }\r\n        this.data[key] = value;\r\n        this.logging && console.log('set', key, value);\r\n        if (autoSave === true) {\r\n            this.save();\r\n        }\r\n    }\r\n\r\n    /**\r\n     * Deletes a key and its value from the data object.\r\n     * Does not write to this.backend automatically!\r\n     *\r\n     * @param {String} key - The key to delete\r\n     * @param {Boolean} autoSave - Whether to write to backend. Defaults to false\r\n     */\r\n    removeItem(key, autoSave) {\r\n        delete this.data[key];\r\n        this.logging && console.log('remove', key);\r\n        if (autoSave === true) {\r\n            this.save();\r\n        }\r\n    }\r\n\r\n    /**\r\n     * Sets all values of a given object at once.\r\n     * Calls `set(key, value)` for each key of the object.\r\n     *\r\n     * @param {Object} values - An object with keys and values\r\n     * @param {Boolean} autoSave - Whether to write to the storage backend right away.\r\n     */\r\n    setAll(values, autoSave) {\r\n        Object.keys(values).forEach(key => {\r\n            this.set(key, values[key]);\r\n        });\r\n        if (autoSave) {\r\n            this.save();\r\n        }\r\n    }\r\n\r\n    /**\r\n     * Persistently enables this instance.\r\n     * Setters will change values, save will write to the backend, save() will be called before unload.\r\n     */\r\n    enable() {\r\n        this.enabled = true;\r\n        this.backend.removeItem(`${this.name}:disabled`);\r\n    }\r\n\r\n    /**\r\n     * Persistently disables this instance.\r\n     * The data object will be cleared, setters will not change values anymore, save() will not write to the backend, and it will not be called before unload.\r\n     * To only disable the functionality without flushing the data, pass `false` as argument.\r\n     *\r\n     * The disabled state will be persisted to backend: The instance remains inactive until `enable()` is called, even across browser reload.\r\n     *\r\n     * @param {Boolean} autoClear - Whether to remove the data as well. Defaults to true.\r\n     */\r\n    disable(autoClear = true) {\r\n        if (autoClear) {\r\n            this.clear();\r\n        }\r\n        this.enabled = false;\r\n        this.backend.setItem(`${this.name}:disabled`, true);\r\n    }\r\n\r\n    /**\r\n     * Empties the data object and the persisted backend values.\r\n     */\r\n    clear() {\r\n        this.logging && console.log('clear', { ...this.data });\r\n        this.data = { ...this.defaultData };\r\n        this.save();\r\n    }\r\n\r\n    /**\r\n     * Writes the data object to backend\r\n     */\r\n    save() {\r\n        try {\r\n            this.logging && console.log('save', this.name, { ...this.data }, JSON.stringify(this.data));\r\n            const data = JSON.stringify(this.data);\r\n            this.backend.setItem(this.name, data);\r\n        } catch (error) {\r\n            console.warn(error);\r\n        }\r\n    };\r\n\r\n    /**\r\n     * Gets the size of this storage.\r\n     * Seems to approximate bytes.\r\n     * @see http://stackoverflow.com/a/34245594/368254\r\n     * @return {number} - The number of characters used to store the stringified data.\r\n     */\r\n    getSize() {\r\n        var sum = 0;\r\n        const keys = Object.keys(this.data);\r\n        const data = this.data;\r\n        for (var i = 0; i < keys.length; ++i) {\r\n            var key = keys[i];\r\n            var value = JSON.stringify(data[key]);\r\n            sum += key.length + value.length;\r\n        }\r\n        return sum;\r\n    }\r\n}\r\n\r\nexport default Persistence;\r\nwindow.Persistence = Persistence;\r\n",
+    "static": true,
+    "longname": "src/Persistence.js",
+    "access": null,
+    "description": null,
+    "lineNumber": 1
+  },
+  {
+    "__docId__": 2,
+    "kind": "variable",
+    "name": "instances",
+    "memberof": "src/Persistence.js",
+    "static": true,
+    "longname": "src/Persistence.js~instances",
+    "access": null,
+    "export": false,
+    "importPath": "@loopmode/persistence/src/Persistence.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 1,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "*[]"
+      ]
+    }
+  },
+  {
+    "__docId__": 3,
+    "kind": "variable",
+    "name": "DEFAULT_PUBLIC_PATH",
+    "memberof": "src/Persistence.js",
+    "static": true,
+    "longname": "src/Persistence.js~DEFAULT_PUBLIC_PATH",
+    "access": null,
+    "export": false,
+    "importPath": "@loopmode/persistence/src/Persistence.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 3,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "string"
+      ]
+    }
+  },
+  {
+    "__docId__": 4,
+    "kind": "class",
+    "name": "Persistence",
+    "memberof": "src/Persistence.js",
+    "static": true,
+    "longname": "src/Persistence.js~Persistence",
+    "access": null,
+    "export": true,
+    "importPath": "@loopmode/persistence/src/Persistence.js",
+    "importStyle": "Persistence",
+    "description": "A wrapper for persisting data to `localStorage` or `sessionStorage`.\nYou can create multiple instances but you must provide unique names;\n\nThe API resembles the one from the web storage objects: `setItem(key, vaue)`, `getItem(key)`, `removeItem(key)`, but there are also shorter aliases: `set()`, `get()` and `remove()`.\n\nIn order to avoid expensive JSON serialization/deserialization by interacting with the storage backend, the data is held in memory (in a simple object).\nAll operations operate on that plain object. An event listener is registered for the `window.beforeunload` event, and only then we will serialize the data to an actual JSON string.\nThe string is then persisted to the backend storage, e.g. `window.localStorage` (default).",
+    "examples": [
+      "const myCache = new Persistence('myCache');\nmyCache.setItem('started', new Date());\nconsole.log(myCache.getItem('started'));"
+    ],
+    "lineNumber": 40,
+    "unknown": [
+      {
+        "tagName": "@author",
+        "tagValue": "jovica.aleksic@xailabs.de"
+      }
+    ],
+    "interface": false
+  },
+  {
+    "__docId__": 5,
+    "kind": "member",
+    "name": "logging",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": true,
+    "longname": "src/Persistence.js~Persistence.logging",
+    "access": null,
+    "description": "Whether to log details to the console when certain static methods are called.",
+    "lineNumber": 50,
+    "type": {
+      "nullable": null,
+      "types": [
+        "Boolean"
+      ],
+      "spread": false,
+      "description": null
+    }
+  },
+  {
+    "__docId__": 6,
+    "kind": "get",
+    "name": "instances",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/Persistence.js~Persistence.instances",
+    "access": null,
+    "description": "An array containing all instances.\n_NOTE: This is a read-only value. You can not mutate the actual instances array._",
+    "lineNumber": 57,
+    "type": {
+      "nullable": null,
+      "types": [
+        "Array"
+      ],
+      "spread": false,
+      "description": null
+    }
+  },
+  {
+    "__docId__": 7,
+    "kind": "method",
+    "name": "connect",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/Persistence.js~Persistence.connect",
+    "access": null,
+    "description": "Returns an already existing instance for a given name or creates a new instance and returns it.\nNote that all constructor options are supported here as well.",
+    "lineNumber": 69,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "Object"
+        ],
+        "spread": false,
+        "optional": true,
+        "name": "options",
+        "description": "Options object"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "String"
+        ],
+        "spread": false,
+        "optional": true,
+        "defaultValue": " '/'",
+        "defaultRaw": " '/'",
+        "name": "options.publicPath",
+        "description": "The path where this app is deployed within the current origin"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "Object"
+      ],
+      "spread": false,
+      "description": "The found or created `Persistence` object"
+    }
+  },
+  {
+    "__docId__": 8,
+    "kind": "method",
+    "name": "get",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/Persistence.js~Persistence.get",
+    "access": null,
+    "description": "Gets a storage by its full name.\nThe full name includes the `publicPath` in order to avoid collisions in cases where multiple apps operate within the same origin.\n\nFor example, if you created an instance via `new Persistence('foo')`, you could access it via `Persistence.get('[/]foo')`.  \nOn the other hand, you might also have a debuggable version deployed on the same origin at `/dev`. (You'd probably use some kind of config value for `publicPath` in such cases).  \nSo, if you had created the instance via `new Persistence('foo', {publicPath: '/dev'})`, you would access it via `Persistence.get('[/dev]foo')`.\n\n_NOTE: If you do not want to deal with full names and `publicPath` values, use `Persistence.find(name)` instead._  \n_NOTE: If you need to get all instances of the origin, use `Persistence.filter(name)` instead._",
+    "see": [
+      "{@link Persistence.find}",
+      "{@link Persistence.filter}"
+    ],
+    "lineNumber": 99,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "String"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "name",
+        "description": "the full instance name"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "Object"
+      ],
+      "spread": false,
+      "description": "The found `Persistence` object or `undefined`"
+    }
+  },
+  {
+    "__docId__": 9,
+    "kind": "method",
+    "name": "find",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/Persistence.js~Persistence.find",
+    "access": null,
+    "description": "Finds a single storage by partial name match.",
+    "examples": [
+      "const storage = new Persistence('config', {publicPath: '/app-one/dev'});\nconsole.log(Persistence.find('conf')) // {logging: false, save: ƒ, name: \"[/app-one/dev]config\", backend: Storage, defaultData: {…}, …}"
+    ],
+    "lineNumber": 113,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "string",
+          "RegExp"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "name",
+        "description": "A string or regular expression that will be matched against instance names"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "Object"
+      ],
+      "spread": false,
+      "description": "The found `Persistence` object or `undefined`"
+    }
+  },
+  {
+    "__docId__": 10,
+    "kind": "method",
+    "name": "filter",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/Persistence.js~Persistence.filter",
+    "access": null,
+    "description": "Filters all storages by partial name match.",
+    "lineNumber": 123,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "string",
+          "RegExp"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "name",
+        "description": "A string or regular expression that will be matched against instance names"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "Array"
+      ],
+      "spread": false,
+      "description": "An array of matching `Persistence` objects. Might be empty."
+    }
+  },
+  {
+    "__docId__": 11,
+    "kind": "method",
+    "name": "getAll",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/Persistence.js~Persistence.getAll",
+    "access": null,
+    "description": "Returns an object containing all instances as values.\nThe instance names are used as keys. If you need an array of instances and don't care about their names, use `Object.values(Persistence.getAll())`.",
+    "lineNumber": 132,
+    "params": [],
+    "return": {
+      "nullable": null,
+      "types": [
+        "Object"
+      ],
+      "spread": false,
+      "description": "A key/value object where each key is an instance name and each value is an instance."
+    }
+  },
+  {
+    "__docId__": 12,
+    "kind": "method",
+    "name": "clearAll",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/Persistence.js~Persistence.clearAll",
+    "access": null,
+    "description": "Clears all storage instances.",
+    "lineNumber": 145,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "Object"
+        ],
+        "spread": false,
+        "optional": true,
+        "name": "options",
+        "description": "Options object"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "Array"
+        ],
+        "spread": false,
+        "optional": true,
+        "name": "options.only",
+        "description": "An array of names. If provided, **only** instances whose names match partially will be cleared."
+      },
+      {
+        "nullable": null,
+        "types": [
+          "Array"
+        ],
+        "spread": false,
+        "optional": true,
+        "name": "options.not",
+        "description": "An array of names. If provided, instances whose names match partially will **NOT** be cleared."
+      }
+    ]
+  },
+  {
+    "__docId__": 13,
+    "kind": "method",
+    "name": "getSize",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/Persistence.js~Persistence.getSize",
+    "access": null,
+    "description": "Retrieves the size of the occupied storage space for all instances.\nThe value is a number of characters and roughly approximates bytes.\nTODO: proper byte-size conversion",
+    "lineNumber": 169,
+    "params": [],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 14,
+    "kind": "member",
+    "name": "logging",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#logging",
+    "access": null,
+    "description": "Whether to log details to the console when certain instance methods are called.",
+    "lineNumber": 184,
+    "type": {
+      "nullable": null,
+      "types": [
+        "Boolean"
+      ],
+      "spread": false,
+      "description": null
+    }
+  },
+  {
+    "__docId__": 15,
+    "kind": "constructor",
+    "name": "constructor",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#constructor",
+    "access": null,
+    "description": "Creates a new Persistence object.  \nA Persistence stores its data in a simple object (in memory) and persists the data as a JSON string to web storage backend (e.g. `window.localStorage`) before the window unloads, using the instance `name` as the actual key in the web storage backend.\nWhen a new instance is created, it looks for previously stored data in the web storage backend, and parses it back to a data object for runtime usage.\n\nThis means that you can set and get values without an performance penalty, JSON conversion only happens at startup and before unload.\n\nYou can specify a name to enable multiple apps on the same origin without collisions in data using the `publicPath` option.\n(Consider that localStorage is shared per origin (protocol, host, port), so if you want to have two _instances in /a and /b, you can use those paths as names for the Persistence)",
+    "lineNumber": 206,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "String"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "name",
+        "description": "A unique name for this backend object."
+      },
+      {
+        "nullable": null,
+        "types": [
+          "Object"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "options",
+        "description": ""
+      },
+      {
+        "nullable": null,
+        "types": [
+          "Object"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "options.data",
+        "description": "An initial data object for this instance"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "Object"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "options.backend",
+        "description": "The backend object to use as backend. Should expose `getItem`, `getItem` and `removeItem` function. Defaults to `window.localStorage`."
+      },
+      {
+        "nullable": null,
+        "types": [
+          "Boolean"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "options.logging",
+        "description": "Whether to enable to logging for this instance"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "Boolean"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "options.autoEnable",
+        "description": "Whether this instance should be enabled. Defaults to true."
+      },
+      {
+        "nullable": null,
+        "types": [
+          "String"
+        ],
+        "spread": false,
+        "optional": true,
+        "defaultValue": " '/'",
+        "defaultRaw": " '/'",
+        "name": "options.publicPath",
+        "description": "The path where this app is deployed within the current origin"
+      }
+    ]
+  },
+  {
+    "__docId__": 16,
+    "kind": "member",
+    "name": "name",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#name",
+    "access": null,
+    "description": null,
+    "lineNumber": 207,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "string"
+      ]
+    }
+  },
+  {
+    "__docId__": 17,
+    "kind": "member",
+    "name": "save",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#save",
+    "access": null,
+    "description": null,
+    "lineNumber": 208,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 18,
+    "kind": "method",
+    "name": "init",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#init",
+    "access": "private",
+    "description": "",
+    "lineNumber": 216,
+    "params": [
+      {
+        "name": "objectPattern",
+        "optional": true,
+        "types": [
+          "{\"backend\": *, \"autoEnable\": *, \"data\": *, \"logging\": *}"
+        ],
+        "defaultRaw": {},
+        "defaultValue": "{}"
+      }
+    ]
+  },
+  {
+    "__docId__": 19,
+    "kind": "member",
+    "name": "backend",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#backend",
+    "access": null,
+    "description": null,
+    "lineNumber": 217,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 20,
+    "kind": "member",
+    "name": "logging",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#logging",
+    "access": null,
+    "description": null,
+    "lineNumber": 218,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 21,
+    "kind": "member",
+    "name": "defaultData",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#defaultData",
+    "access": null,
+    "description": null,
+    "lineNumber": 219,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 22,
+    "kind": "member",
+    "name": "data",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#data",
+    "access": null,
+    "description": null,
+    "lineNumber": 220,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "{...undefined: Object, ...data: Object}"
+      ]
+    }
+  },
+  {
+    "__docId__": 23,
+    "kind": "member",
+    "name": "data",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#data",
+    "access": null,
+    "description": null,
+    "lineNumber": 226,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "{...undefined: Object}"
+      ]
+    }
+  },
+  {
+    "__docId__": 24,
+    "kind": "method",
+    "name": "has",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#has",
+    "access": null,
+    "description": "Checks if a property exists.\nNote: `true` will be returned as long as the key is found on the data object, even if the value itself is empty.",
+    "lineNumber": 245,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "String"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "key",
+        "description": "The property name to check for existence."
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "Boolean"
+      ],
+      "spread": false,
+      "description": "`true` if `key` was found"
+    }
+  },
+  {
+    "__docId__": 25,
+    "kind": "method",
+    "name": "set",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#set",
+    "access": null,
+    "description": "Alias for `setItem(key, value)`",
+    "see": [
+      "{@link Persistence#setItem}"
+    ],
+    "lineNumber": 256,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "String",
+          "Object"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "key",
+        "description": "The key for the value"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "any"
+        ],
+        "spread": false,
+        "optional": true,
+        "name": "value",
+        "description": "When `key` is a string: the value, otherwise: the `autoSave` flag"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "Boolean"
+        ],
+        "spread": false,
+        "optional": true,
+        "name": "autoSave",
+        "description": "When `key` is a string: Whether to immediatly write to the backend."
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 26,
+    "kind": "method",
+    "name": "get",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#get",
+    "access": null,
+    "description": "Alias for `getItem(key)`",
+    "see": [
+      "{@link Persistence#getItem}"
+    ],
+    "lineNumber": 266,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "String"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "key",
+        "description": "The key to retrieve a value for"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "any"
+      ],
+      "spread": false,
+      "description": "The value for `key`"
+    }
+  },
+  {
+    "__docId__": 27,
+    "kind": "method",
+    "name": "remove",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#remove",
+    "access": null,
+    "description": "Alias for `removeItem(key)`",
+    "see": [
+      "{@link Persistence#removeItem}"
+    ],
+    "lineNumber": 276,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "String"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "key",
+        "description": "The key to delete"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "Boolean"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "autoSave",
+        "description": "Whether to write to backend. Defaults to false"
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 28,
+    "kind": "method",
+    "name": "getItem",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#getItem",
+    "access": null,
+    "description": "Retrieves a value from the backend data.\n- Booleans, numbers, undefined and null will be parsed/casted to proper JS objects/values\n- All other values will be returned as strings\n\nNote: This does not read from the backend directly, but from the data object instead (which was initially parsed from the backend values)",
+    "lineNumber": 290,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "String"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "key",
+        "description": "The key to retrieve a value for"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "any"
+      ],
+      "spread": false,
+      "description": "The value for `key`"
+    }
+  },
+  {
+    "__docId__": 29,
+    "kind": "member",
+    "name": "logging",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#logging",
+    "access": null,
+    "description": null,
+    "lineNumber": 292,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 30,
+    "kind": "member",
+    "name": "logging",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#logging",
+    "access": null,
+    "description": null,
+    "lineNumber": 328,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 31,
+    "kind": "method",
+    "name": "setItem",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#setItem",
+    "access": null,
+    "description": "Sets a key/value to the data object.\nIf the first argument is not a string but an object, the signature changes to `(values, autoSave)` and `setAll` will be used internally.",
+    "lineNumber": 340,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "String",
+          "Object"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "key",
+        "description": "The key for the value"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "any"
+        ],
+        "spread": false,
+        "optional": true,
+        "name": "value",
+        "description": "When `key` is a string: the value, otherwise: the `autoSave` flag"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "Boolean"
+        ],
+        "spread": false,
+        "optional": true,
+        "name": "autoSave",
+        "description": "When `key` is a string: Whether to immediatly write to the backend."
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 32,
+    "kind": "member",
+    "name": "logging",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#logging",
+    "access": null,
+    "description": null,
+    "lineNumber": 345,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 33,
+    "kind": "method",
+    "name": "removeItem",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#removeItem",
+    "access": null,
+    "description": "Deletes a key and its value from the data object.\nDoes not write to this.backend automatically!",
+    "lineNumber": 358,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "String"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "key",
+        "description": "The key to delete"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "Boolean"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "autoSave",
+        "description": "Whether to write to backend. Defaults to false"
+      }
+    ]
+  },
+  {
+    "__docId__": 34,
+    "kind": "member",
+    "name": "logging",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#logging",
+    "access": null,
+    "description": null,
+    "lineNumber": 360,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 35,
+    "kind": "method",
+    "name": "setAll",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#setAll",
+    "access": null,
+    "description": "Sets all values of a given object at once.\nCalls `set(key, value)` for each key of the object.",
+    "lineNumber": 373,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "Object"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "values",
+        "description": "An object with keys and values"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "Boolean"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "autoSave",
+        "description": "Whether to write to the storage backend right away."
+      }
+    ]
+  },
+  {
+    "__docId__": 36,
+    "kind": "method",
+    "name": "enable",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#enable",
+    "access": null,
+    "description": "Persistently enables this instance.\nSetters will change values, save will write to the backend, save() will be called before unload.",
+    "lineNumber": 386,
+    "params": []
+  },
+  {
+    "__docId__": 37,
+    "kind": "member",
+    "name": "enabled",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#enabled",
+    "access": null,
+    "description": null,
+    "lineNumber": 387,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "boolean"
+      ]
+    }
+  },
+  {
+    "__docId__": 38,
+    "kind": "method",
+    "name": "disable",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#disable",
+    "access": null,
+    "description": "Persistently disables this instance.\nThe data object will be cleared, setters will not change values anymore, save() will not write to the backend, and it will not be called before unload.\nTo only disable the functionality without flushing the data, pass `false` as argument.\n\nThe disabled state will be persisted to backend: The instance remains inactive until `enable()` is called, even across browser reload.",
+    "lineNumber": 400,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "Boolean"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "autoClear",
+        "description": "Whether to remove the data as well. Defaults to true."
+      }
+    ]
+  },
+  {
+    "__docId__": 39,
+    "kind": "member",
+    "name": "enabled",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#enabled",
+    "access": null,
+    "description": null,
+    "lineNumber": 404,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "boolean"
+      ]
+    }
+  },
+  {
+    "__docId__": 40,
+    "kind": "method",
+    "name": "clear",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#clear",
+    "access": null,
+    "description": "Empties the data object and the persisted backend values.",
+    "lineNumber": 411,
+    "params": []
+  },
+  {
+    "__docId__": 41,
+    "kind": "member",
+    "name": "logging",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#logging",
+    "access": null,
+    "description": null,
+    "lineNumber": 412,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 42,
+    "kind": "member",
+    "name": "data",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#data",
+    "access": null,
+    "description": null,
+    "lineNumber": 413,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "{...undefined: Object}"
+      ]
+    }
+  },
+  {
+    "__docId__": 43,
+    "kind": "method",
+    "name": "save",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#save",
+    "access": null,
+    "description": "Writes the data object to backend",
+    "lineNumber": 420,
+    "params": []
+  },
+  {
+    "__docId__": 44,
+    "kind": "member",
+    "name": "logging",
+    "memberof": "src/Persistence.js~Persistence",
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#logging",
+    "access": null,
+    "description": null,
+    "lineNumber": 422,
+    "undocument": true,
+    "unknown": [
+      {
+        "tagName": "@_undocument",
+        "tagValue": ""
+      }
+    ],
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 45,
+    "kind": "method",
+    "name": "getSize",
+    "memberof": "src/Persistence.js~Persistence",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/Persistence.js~Persistence#getSize",
+    "access": null,
+    "description": "Gets the size of this storage.\nSeems to approximate bytes.",
+    "see": [
+      "http://stackoverflow.com/a/34245594/368254"
+    ],
+    "lineNumber": 436,
+    "params": [],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": "The number of characters used to store the stringified data."
+    }
+  },
+  {
+    "__docId__": 47,
+    "kind": "external",
+    "name": "Infinity",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Infinity",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Infinity",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 48,
+    "kind": "external",
+    "name": "NaN",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~NaN",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 49,
+    "kind": "external",
+    "name": "undefined",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~undefined",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 50,
+    "kind": "external",
+    "name": "null",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~null",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 51,
+    "kind": "external",
+    "name": "Object",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Object",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 52,
+    "kind": "external",
+    "name": "object",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~object",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 53,
+    "kind": "external",
+    "name": "Function",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Function",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 54,
+    "kind": "external",
+    "name": "function",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~function",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 55,
+    "kind": "external",
+    "name": "Boolean",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Boolean",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 56,
+    "kind": "external",
+    "name": "boolean",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~boolean",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 57,
+    "kind": "external",
+    "name": "Symbol",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Symbol",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 58,
+    "kind": "external",
+    "name": "Error",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Error",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 59,
+    "kind": "external",
+    "name": "EvalError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/EvalError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~EvalError",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 60,
+    "kind": "external",
+    "name": "InternalError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/InternalError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~InternalError",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 61,
+    "kind": "external",
+    "name": "RangeError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RangeError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~RangeError",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 62,
+    "kind": "external",
+    "name": "ReferenceError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ReferenceError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~ReferenceError",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 63,
+    "kind": "external",
+    "name": "SyntaxError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SyntaxError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~SyntaxError",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 64,
+    "kind": "external",
+    "name": "TypeError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypeError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~TypeError",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 65,
+    "kind": "external",
+    "name": "URIError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/URIError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~URIError",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 66,
+    "kind": "external",
+    "name": "Number",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Number",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 67,
+    "kind": "external",
+    "name": "number",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~number",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 68,
+    "kind": "external",
+    "name": "Date",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Date",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 69,
+    "kind": "external",
+    "name": "String",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~String",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 70,
+    "kind": "external",
+    "name": "string",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~string",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 71,
+    "kind": "external",
+    "name": "RegExp",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~RegExp",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 72,
+    "kind": "external",
+    "name": "Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 73,
+    "kind": "external",
+    "name": "Int8Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int8Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int8Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 74,
+    "kind": "external",
+    "name": "Uint8Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint8Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 75,
+    "kind": "external",
+    "name": "Uint8ClampedArray",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint8ClampedArray",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 76,
+    "kind": "external",
+    "name": "Int16Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int16Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int16Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 77,
+    "kind": "external",
+    "name": "Uint16Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint16Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint16Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 78,
+    "kind": "external",
+    "name": "Int32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int32Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int32Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 79,
+    "kind": "external",
+    "name": "Uint32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint32Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint32Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 80,
+    "kind": "external",
+    "name": "Float32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Float32Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 81,
+    "kind": "external",
+    "name": "Float64Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float64Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Float64Array",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 82,
+    "kind": "external",
+    "name": "Map",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Map",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 83,
+    "kind": "external",
+    "name": "Set",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Set",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 84,
+    "kind": "external",
+    "name": "WeakMap",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~WeakMap",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 85,
+    "kind": "external",
+    "name": "WeakSet",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~WeakSet",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 86,
+    "kind": "external",
+    "name": "ArrayBuffer",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~ArrayBuffer",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 87,
+    "kind": "external",
+    "name": "DataView",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~DataView",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 88,
+    "kind": "external",
+    "name": "JSON",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~JSON",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 89,
+    "kind": "external",
+    "name": "Promise",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Promise",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 90,
+    "kind": "external",
+    "name": "Generator",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Generator",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 91,
+    "kind": "external",
+    "name": "GeneratorFunction",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/GeneratorFunction",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~GeneratorFunction",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 92,
+    "kind": "external",
+    "name": "Reflect",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Reflect",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 93,
+    "kind": "external",
+    "name": "Proxy",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Proxy",
+    "access": null,
+    "description": "",
+    "lineNumber": 193,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 95,
+    "kind": "external",
+    "name": "CanvasRenderingContext2D",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/WebAPIExternal.js~CanvasRenderingContext2D",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 96,
+    "kind": "external",
+    "name": "DocumentFragment",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/WebAPIExternal.js~DocumentFragment",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 97,
+    "kind": "external",
+    "name": "Element",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Element",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/WebAPIExternal.js~Element",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 98,
+    "kind": "external",
+    "name": "Event",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Event",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/WebAPIExternal.js~Event",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 99,
+    "kind": "external",
+    "name": "Node",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Node",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/WebAPIExternal.js~Node",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 100,
+    "kind": "external",
+    "name": "NodeList",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/NodeList",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/WebAPIExternal.js~NodeList",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 101,
+    "kind": "external",
+    "name": "XMLHttpRequest",
+    "externalLink": "https://developer.mozilla.org/en/docs/Web/API/XMLHttpRequest",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/WebAPIExternal.js~XMLHttpRequest",
+    "access": null,
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 102,
+    "kind": "external",
+    "name": "AudioContext",
+    "externalLink": "https://developer.mozilla.org/en/docs/Web/API/AudioContext",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "static": true,
+    "longname": "BuiltinExternal/WebAPIExternal.js~AudioContext",
+    "access": null,
+    "description": "",
+    "lineNumber": 34,
+    "builtinExternal": true
+  }
+]

@@ -78,9 +78,9 @@
     lodash "^4.2.0"
     to-fast-properties "^2.0.0"
 
-"@loopmode/babel6-base@*":
-  version "0.0.2"
-  resolved "https://registry.yarnpkg.com/@loopmode/babel6-base/-/babel6-base-0.0.2.tgz#f7adc66ccdc8d54107aabfa96a1f46895d4c0322"
+"@loopmode/babel6-base@^0.0.4":
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/@loopmode/babel6-base/-/babel6-base-0.0.4.tgz#9858f76701cdc89512ce630ff916f6940f06898e"
   dependencies:
     "@loopmode/eslint-config-react" "^1.0.0"
     babel-cli "^6.24.1"
@@ -100,7 +100,6 @@
     eslint-plugin-prettier "^2.3.1"
     eslint-plugin-react "^7.3.0"
     prettier "^1.7.0"
-    rimraf "^2.6.2"
 
 "@loopmode/eslint-config-react@^1.0.0":
   version "1.0.0"
@@ -2870,7 +2869,7 @@ restore-cursor@^2.0.0:
     onetime "^2.0.0"
     signal-exit "^3.0.2"
 
-rimraf@^2.2.8, rimraf@^2.6.1, rimraf@^2.6.2:
+rimraf@^2.2.8, rimraf@^2.6.1:
   version "2.6.2"
   resolved "https://registry.yarnpkg.com/rimraf/-/rimraf-2.6.2.tgz#2ed8150d24a16ea8651e6d6ef0f47c4158ce7a36"
   dependencies:

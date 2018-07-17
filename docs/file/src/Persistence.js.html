@@ -1,16 +1,56 @@
-const instances = [];
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../">
+  <title data-ice="title">src/Persistence.js | Persistence API Document</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  
+  
+  <script src="script/manual.js"></script>
+</head>
+<body class="layout-container" data-ice="rootContainer">
 
-const DEFAULT_PUBLIC_PATH = '/';
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+</header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/Persistence.js~Persistence.html">Persistence</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">src/Persistence.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">const instances = [];
+
+const DEFAULT_PUBLIC_PATH = &apos;/&apos;;
 
 if (!window.__persistenceInitialized) {
     window.__persistenceInitialized = true;
-    window.addEventListener('beforeunload', function persistAll() {
-        instances.forEach(instance => {
+    window.addEventListener(&apos;beforeunload&apos;, function persistAll() {
+        instances.forEach(instance =&gt; {
             if (instance.enabled) {
                 try {
                     instance.save();
                 } catch (error) {
-                    console.warn('[Persistence] Failed saving', {
+                    console.warn(&apos;[Persistence] Failed saving&apos;, {
                         error,
                         instance
                     });
@@ -31,9 +71,9 @@ if (!window.__persistenceInitialized) {
  * The string is then persisted to the backend storage, e.g. `window.localStorage` (default).
  *
  * @example
- * const myCache = new Persistence('myCache');
- * myCache.setItem('started', new Date());
- * console.log(myCache.getItem('started'));
+ * const myCache = new Persistence(&apos;myCache&apos;);
+ * myCache.setItem(&apos;started&apos;, new Date());
+ * console.log(myCache.getItem(&apos;started&apos;));
  *
  * @author jovica.aleksic@xailabs.de
  */
@@ -63,7 +103,7 @@ class Persistence {
      * Note that all constructor options are supported here as well.
      *
      * @param {Object} [options] - Options object
-     * @param {String} [options.publicPath = '/'] - The path where this app is deployed within the current origin
+     * @param {String} [options.publicPath = &apos;/&apos;] - The path where this app is deployed within the current origin
      * @return {Object} - The found or created `Persistence` object
      */
     static connect(name, options = {}) {
@@ -82,9 +122,9 @@ class Persistence {
      * Gets a storage by its full name.
      * The full name includes the `publicPath` in order to avoid collisions in cases where multiple apps operate within the same origin.
      *
-     * For example, if you created an instance via `new Persistence('foo')`, you could access it via `Persistence.get('[/]foo')`.  
-     * On the other hand, you might also have a debuggable version deployed on the same origin at `/dev`. (You'd probably use some kind of config value for `publicPath` in such cases).  
-     * So, if you had created the instance via `new Persistence('foo', {publicPath: '/dev'})`, you would access it via `Persistence.get('[/dev]foo')`.
+     * For example, if you created an instance via `new Persistence(&apos;foo&apos;)`, you could access it via `Persistence.get(&apos;[/]foo&apos;)`.  
+     * On the other hand, you might also have a debuggable version deployed on the same origin at `/dev`. (You&apos;d probably use some kind of config value for `publicPath` in such cases).  
+     * So, if you had created the instance via `new Persistence(&apos;foo&apos;, {publicPath: &apos;/dev&apos;})`, you would access it via `Persistence.get(&apos;[/dev]foo&apos;)`.
      *
      * _NOTE: If you do not want to deal with full names and `publicPath` values, use `Persistence.find(name)` instead._  
      * _NOTE: If you need to get all instances of the origin, use `Persistence.filter(name)` instead._
@@ -97,21 +137,21 @@ class Persistence {
      */
     /* eslint-enable */
     static get(name) {
-        return instances.find(storage => storage.name === name);
+        return instances.find(storage =&gt; storage.name === name);
     }
 
     /**
      * Finds a single storage by partial name match.
      *
      * @example
-     * const storage = new Persistence('config', {publicPath: '/app-one/dev'});
-     * console.log(Persistence.find('conf')) // {logging: false, save: ƒ, name: "[/app-one/dev]config", backend: Storage, defaultData: {…}, …}
+     * const storage = new Persistence(&apos;config&apos;, {publicPath: &apos;/app-one/dev&apos;});
+     * console.log(Persistence.find(&apos;conf&apos;)) // {logging: false, save: &#x192;, name: &quot;[/app-one/dev]config&quot;, backend: Storage, defaultData: {&#x2026;},&#xA0;&#x2026;}
      *
      * @param {string|RegExp} name - A string or regular expression that will be matched against instance names
      * @return {Object} - The found `Persistence` object or `undefined`
      */
     static find(name) {
-        return instances.find(storage => storage.name.match(name));
+        return instances.find(storage =&gt; storage.name.match(name));
     }
 
     /**
@@ -121,16 +161,16 @@ class Persistence {
      * @return {Array} - An array of matching `Persistence` objects. Might be empty.
      */
     static filter(name) {
-        return instances.filter(storage => storage.name.match(name));
+        return instances.filter(storage =&gt; storage.name.match(name));
     }
 
     /**
      * Returns an object containing all instances as values.
-     * The instance names are used as keys. If you need an array of instances and don't care about their names, use `Object.values(Persistence.getAll())`.
+     * The instance names are used as keys. If you need an array of instances and don&apos;t care about their names, use `Object.values(Persistence.getAll())`.
      * @return {Object} - A key/value object where each key is an instance name and each value is an instance.
      */
     static getAll() {
-        return instances.reduce((result, instance) => {
+        return instances.reduce((result, instance) =&gt; {
             result[instance.name] = instance;
             return result;
         }, {});
@@ -143,21 +183,21 @@ class Persistence {
      * @param {Array} [options.not] - An array of names. If provided, instances whose names match partially will **NOT** be cleared.
      */
     static clearAll(options = {}) {
-        const onlyIncluded = instance => !options.only || options.only.find(name => instance.name.match(name));
-        const notExcluded = instance => !options.not || !options.not.find(name => instance.name.match(name));
+        const onlyIncluded = instance =&gt; !options.only || options.only.find(name =&gt; instance.name.match(name));
+        const notExcluded = instance =&gt; !options.not || !options.not.find(name =&gt; instance.name.match(name));
         const cleared = instances
             .filter(onlyIncluded)
             .filter(notExcluded)
-            .map(storage => {
+            .map(storage =&gt; {
                 storage.clear();
                 return storage;
             });
-        const skipped = instances.filter(instance => cleared.indexOf(instance) === -1);
-        Persistence.logging &&
+        const skipped = instances.filter(instance =&gt; cleared.indexOf(instance) === -1);
+        Persistence.logging &amp;&amp;
             console.info(
-                '[Persistence]',
-                cleared.length ? `\n\tcleared: ${cleared.map(instance => instance.name)}` : '',
-                skipped.length ? `\n\tskipped: ${skipped.map(instance => instance.name)}` : ''
+                &apos;[Persistence]&apos;,
+                cleared.length ? `\n\tcleared: ${cleared.map(instance =&gt; instance.name)}` : &apos;&apos;,
+                skipped.length ? `\n\tskipped: ${skipped.map(instance =&gt; instance.name)}` : &apos;&apos;
             );
     }
 
@@ -167,7 +207,7 @@ class Persistence {
      * TODO: proper byte-size conversion
      */
     static getSize() {
-        return instances.reduce((result, storage) => {
+        return instances.reduce((result, storage) =&gt; {
             return result + storage.getSize();
         }, 0);
     }
@@ -200,7 +240,7 @@ class Persistence {
      * @param {Object} options.backend - The backend object to use as backend. Should expose `getItem`, `getItem` and `removeItem` function. Defaults to `window.localStorage`.
      * @param {Boolean} options.logging - Whether to enable to logging for this instance
      * @param {Boolean} options.autoEnable - Whether this instance should be enabled. Defaults to true.
-     * @param {String} [options.publicPath = '/'] - The path where this app is deployed within the current origin
+     * @param {String} [options.publicPath = &apos;/&apos;] - The path where this app is deployed within the current origin
      */
     /* eslint-enable */
     constructor(name, options = {}) {
@@ -219,13 +259,13 @@ class Persistence {
         this.defaultData = this.defaultData || { ...data };
         this.data = { ...this.defaultData, ...this.data, ...data };
 
-        if (!this.backend.getItem(`${this.name}:disabled`) && autoEnable) {
+        if (!this.backend.getItem(`${this.name}:disabled`) &amp;&amp; autoEnable) {
             const savedData = this.backend.getItem(this.name);
             if (savedData) {
                 try {
                     this.data = { ...this.data, ...JSON.parse(savedData) };
                 } catch (error) {
-                    console.warn('[Persistence] failed parsing saved data', {
+                    console.warn(&apos;[Persistence] failed parsing saved data&apos;, {
                         error,
                         savedData
                     });
@@ -289,31 +329,31 @@ class Persistence {
      */
     getItem(key) {
         if (key === undefined) {
-            this.logging && console.log('get', { key, result: this.data });
+            this.logging &amp;&amp; console.log(&apos;get&apos;, { key, result: this.data });
             return this.data;
         }
-        const getValue = () => {
+        const getValue = () =&gt; {
             const value = this.data[key];
             if (value !== undefined) {
-                if (value === 'true' || value === true) {
+                if (value === &apos;true&apos; || value === true) {
                     return true;
                 }
-                if (value === 'false' || value === false) {
+                if (value === &apos;false&apos; || value === false) {
                     return false;
                 }
-                if (value === 'undefined') {
+                if (value === &apos;undefined&apos;) {
                     return undefined;
                 }
-                if (value === 'null' || value === null) {
+                if (value === &apos;null&apos; || value === null) {
                     return null;
                 }
-                if (value === '') {
-                    return '';
+                if (value === &apos;&apos;) {
+                    return &apos;&apos;;
                 }
                 if (Array.isArray(value)) {
                     // explicitely check for array!
                     // otherwise, an array containing a single numeric value will pass as a number in the next isNaN check
-                    // because javascript is an idiot sometimes..: `isNaN(['1']) === false` due to casting/auto-boxing `['1'] -> '1' -> 1 > numeric`
+                    // because javascript is an idiot sometimes..: `isNaN([&apos;1&apos;]) === false` due to casting/auto-boxing `[&apos;1&apos;] -&gt; &apos;1&apos; -&gt; 1 &gt; numeric`
                     return value;
                 }
                 if (!isNaN(value)) {
@@ -325,7 +365,7 @@ class Persistence {
         };
         const result = getValue();
 
-        this.logging && console.log('get', { key, result });
+        this.logging &amp;&amp; console.log(&apos;get&apos;, { key, result });
         return result;
     }
 
@@ -338,11 +378,11 @@ class Persistence {
      * @param {Boolean} [autoSave] - When `key` is a string: Whether to immediatly write to the backend.
      */
     setItem(key, value, autoSave) {
-        if (typeof key !== 'string') {
+        if (typeof key !== &apos;string&apos;) {
             return this.setAll(key, value);
         }
         this.data[key] = value;
-        this.logging && console.log('set', key, value);
+        this.logging &amp;&amp; console.log(&apos;set&apos;, key, value);
         if (autoSave === true) {
             this.save();
         }
@@ -357,7 +397,7 @@ class Persistence {
      */
     removeItem(key, autoSave) {
         delete this.data[key];
-        this.logging && console.log('remove', key);
+        this.logging &amp;&amp; console.log(&apos;remove&apos;, key);
         if (autoSave === true) {
             this.save();
         }
@@ -371,7 +411,7 @@ class Persistence {
      * @param {Boolean} autoSave - Whether to write to the storage backend right away.
      */
     setAll(values, autoSave) {
-        Object.keys(values).forEach(key => {
+        Object.keys(values).forEach(key =&gt; {
             this.set(key, values[key]);
         });
         if (autoSave) {
@@ -409,7 +449,7 @@ class Persistence {
      * Empties the data object and the persisted backend values.
      */
     clear() {
-        this.logging && console.log('clear', { ...this.data });
+        this.logging &amp;&amp; console.log(&apos;clear&apos;, { ...this.data });
         this.data = { ...this.defaultData };
         this.save();
     }
@@ -419,7 +459,7 @@ class Persistence {
      */
     save() {
         try {
-            this.logging && console.log('save', this.name, { ...this.data }, JSON.stringify(this.data));
+            this.logging &amp;&amp; console.log(&apos;save&apos;, this.name, { ...this.data }, JSON.stringify(this.data));
             const data = JSON.stringify(this.data);
             this.backend.setItem(this.name, data);
         } catch (error) {
@@ -437,7 +477,7 @@ class Persistence {
         var sum = 0;
         const keys = Object.keys(this.data);
         const data = this.data;
-        for (var i = 0; i < keys.length; ++i) {
+        for (var i = 0; i &lt; keys.length; ++i) {
             var key = keys[i];
             var value = JSON.stringify(data[key]);
             sum += key.length + value.length;
@@ -448,3 +488,20 @@ class Persistence {
 
 export default Persistence;
 window.Persistence = Persistence;
+</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.5.2)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>
