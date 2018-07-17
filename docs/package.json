@@ -1,8 +1,16 @@
 {
   "name": "@loopmode/persistence",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "main": "lib/index.js",
   "license": "MIT",
+  "keywords": [
+    "localStorage",
+    "sessionStorage",
+    "web storage",
+    "persistence"
+  ],
+  "homepage": "https://github.com/loopmode/persistence",
+  "repository": "github:loopmode/persistence",
   "scripts": {
     "clean": "rm -rf lib/*",
     "build": "babel src --out-dir lib --copy-files",
