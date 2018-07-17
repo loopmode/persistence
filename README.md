@@ -67,12 +67,19 @@ Effectively, you are free to set ridiculous amounts of data without worrying abo
 ## Shared instances
 
 In case you need to access values from different components, e.g. in a react application, when you don't know the order of instantiation, use the the static `connect` method instead of creating an instance.  
-It will simply return an existing instance if found, or create and return one if it's the firt call.
+The first call will create and return an instance, all consecutive calls (e.g. in other parts of your code) will simply receive the existing instance.
 
 ```javascript
 var a = Persistence.connect('foo');
 var b = Persistence.connect('foo');
 console.log(a === b); // true
+
+// also:
+var a = new Persistence('foo');
+var b = Persistence.connect('foo');
+var c = Persistence.connect('foo');
+console.log(a === b === c); // true
+
 ```
 
 ## Storage: backend
