@@ -1,6 +1,6 @@
 {
   "name": "@loopmode/persistence",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "main": "lib/index.js",
   "license": "MIT",
   "keywords": [
@@ -9,7 +9,7 @@
     "web storage",
     "persistence"
   ],
-  "homepage": "https://github.com/loopmode/persistence",
+  "homepage": "https://loopmode.github.io/persistence/",
   "repository": "github:loopmode/persistence",
   "scripts": {
     "clean": "rm -rf lib/*",
