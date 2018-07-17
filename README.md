@@ -3,8 +3,8 @@
 A scoped wrapper for web storage APIs.
 
 - Allows simplified and more performant usage of `window.localStorage` and `window.sessionStorage`.  
-- Instead of using complex keys to avoid naming collisions, create scoped persistence objects instead and use simple keys on them
-- Instead of serializing/deserializing object values on each access, do it only once and operate on a plain object instead
+- Instead of using complex keys to avoid naming collisions, create scoped persistence objects and use simple keys
+- Instead of serializing/deserializing object values on each access, do it only once and operate on a plain object in memory
 
 ### Resources
 
