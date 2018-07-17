@@ -39,8 +39,9 @@ storage.set('foo', {bar: {baz: 'boo'}});
 ## Serialization and performance
 
 When using the get/set methods, you are not operating on the actual web storage yet, because that would involve serialization/deserialization (e.g. `JSON.encode`, `JSON.stringify`).  
-Instead, you work on a simple in-memory object and no serialization is taking place until before the page is unloaded or you call `instance.save()` manually.  
-_NOTE: You can pass the `{autoSave: true}` option to the `set` and `setItem` methods in order to immediatly write to the Storage: backend_
+Instead, you work on a simple in-memory object and no serialization is taking place until before the page is unloaded or you call `instance.save()` manually.
+
+_NOTE: Mutating methods (`set`/`setItem`, `remove`/`removeItem`, `setAll`, `clear`) support an optional `autoSave` flag. Passing `{autoSave: true}` will cause the change to be immediatly persisted to the web storage backend._
 
 ```javascript
 // PageTwo.js
