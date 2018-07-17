@@ -1,6 +1,6 @@
 {
   "name": "@loopmode/persistence",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "main": "lib/index.js",
   "license": "MIT",
   "scripts": {
@@ -27,7 +27,9 @@
     "source": "./src",
     "destination": "./docs",
     "coverage": true,
-    "includes": ["\\.js$"],
+    "includes": [
+      "\\.js$"
+    ],
     "unexportIdentifier": false,
     "undocumentIdentifier": false,
     "experimentalProposal": {
