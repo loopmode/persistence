@@ -62,12 +62,12 @@ storage.save();
 window.localStorage.getItem("PageTwo"); // "{\"viewMode\": \"grid\", \"foo\": {\"bar\": {\"baz\": \"boo\"}}"} 
 ```
 
-Effectively, you are free to set ridiculous amounts of data without worrying about performance impacts, for example you could set complex data objects within a `mousemove` event handlers or even inside a raf-loop.
+Effectively, you are free to set ridiculous amounts of data without worrying about performance impacts, for example you could set complex data object values from inside a `mousemove` event handler or set values from inside a `requestAnimationFrame` loop without the penalties of serialization.
 
 ## Shared instances
 
 In case you need to access values from different components, e.g. in a react application, when you don't know the order of instantiation, use the the static `connect` method instead of creating an instance.  
-It wil simply return an existing instance if found, or create and return one if it's the firt call.
+It will simply return an existing instance if found, or create and return one if it's the firt call.
 
 ```javascript
 var a = Persistence.connect('foo');

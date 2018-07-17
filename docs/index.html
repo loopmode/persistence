@@ -87,9 +87,9 @@ window.localStorage.getItem(&quot;PageTwo&quot;); // null
 storage.save();
 window.localStorage.getItem(&quot;PageTwo&quot;); // &quot;{\&quot;viewMode\&quot;: \&quot;grid\&quot;, \&quot;foo\&quot;: {\&quot;bar\&quot;: {\&quot;baz\&quot;: \&quot;boo\&quot;}}&quot;}</code>
 </code></pre>
-<p>Effectively, you are free to set ridiculous amounts of data without worrying about performance impacts, for example you could set complex data objects within a <code>mousemove</code> event handlers or even inside a raf-loop.</p>
+<p>Effectively, you are free to set ridiculous amounts of data without worrying about performance impacts, for example you could set complex data object values from inside a <code>mousemove</code> event handler or set values from inside a <code>requestAnimationFrame</code> loop without the penalties of serialization.</p>
 <h2 id="shared-instances">Shared instances</h2>
-<p>In case you need to access values from different components, e.g. in a react application, when you don&apos;t know the order of instantiation, use the the static <code>connect</code> method instead of creating an instance.<br>It wil simply return an existing instance if found, or create and return one if it&apos;s the firt call.</p>
+<p>In case you need to access values from different components, e.g. in a react application, when you don&apos;t know the order of instantiation, use the the static <code>connect</code> method instead of creating an instance.<br>It will simply return an existing instance if found, or create and return one if it&apos;s the firt call.</p>
 <pre><code class="lang-javascript"><code class="source-code prettyprint">var a = Persistence.connect(&apos;foo&apos;);
 var b = Persistence.connect(&apos;foo&apos;);
 console.log(a === b); // true</code>
