@@ -425,7 +425,7 @@ class Persistence {
         } catch (error) {
             console.warn(error);
         }
-    };
+    }
 
     /**
      * Gets the size of this storage.

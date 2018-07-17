@@ -5,7 +5,14 @@ A scoped wrapper for web storage APIs.
 Allows simplified and more performant usage of `window.localStorage` and `window.sessionStorage`.  
 Instead of using long keys to avoid collisions, create scoped persistence objects instead.
 
-Full documentation available at [https://loopmode.github.io/persistence/](https://loopmode.github.io/persistence/).
+Full documentation available at [https://loopmode.github.io/persistence/](https://loopmode.github.io/persistence/)
+Repository available at [https://github.com/loopmode/persistence](https://github.com/loopmode/persistence)  
+
+## Installation
+
+```javascript
+yarn add @loopmode/persistence
+```
 
 ## Usage
 
@@ -14,10 +21,12 @@ Additionally, you can store object values.
 
 ```javascript
 // PageOne.js
+import Persistence from '@loopmode/persistence';
 const storage = new Persistence('PageOne');
 storage.set('viewMode', 'list');
 
 // PageTwo.js
+import Persistence from '@loopmode/persistence';
 const storage = new Persistence('PageTwo');
 storage.set('viewMode', 'grid');
 storage.set('foo', {bar: {baz: 'boo'}});
